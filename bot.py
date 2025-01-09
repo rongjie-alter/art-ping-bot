@@ -230,18 +230,19 @@ async def handle_bot_message(msg: discord.Message):
     if len(names) == 0:
       await msg.reply("You are not in any ping list yet")
     else:
+      names.sort()
       await msg.reply(", ".join(names))
 
   async def listall(args):
     names = charaManager.get_charas()
+    names.sort()
     await msg.reply(", ".join(names))
 
-  parser = ErrorCatchingArgumentParser(BOT_COMMAND_NAME, add_help=False, exit_on_error=False)
-  parser.register_msg_handler(msg)
+  parser = ErrorCatchingArgumentParser(BOT_COMMAND_NAME, exit_on_error=False)
   subparsers = parser.add_subparsers(description="Manage art pings", required=True)
 
-  parser_help = subparsers.add_parser("help", description="Print this message")
-  parser_help.set_defaults(func=help)
+  #parser_help = subparsers.add_parser("help", description="Print this message")
+  #parser_help.set_defaults(func=help)
 
   parser_add = subparsers.add_parser('add', add_help=True, description="Add yourself to a character's ping list")
   parser_add.add_argument("chara_name")
