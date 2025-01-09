@@ -214,9 +214,6 @@ async def handle_bot_message(msg: discord.Message):
 
   charaManager: chara_db.CharaManager = guild["charaManager"]
 
-  async def help(args):
-    await msg.reply("```\n" + parser.format_help() + "```")
-
   async def add(args):
     charaManager.add_user_to_chara(args.chara_name, str(msg.author.id))
     await msg.reply("Done")
@@ -238,11 +235,11 @@ async def handle_bot_message(msg: discord.Message):
     names.sort()
     await msg.reply(", ".join(names))
 
+  async def purge(args):
+    await msg.reply("TODO")
+
   parser = ErrorCatchingArgumentParser(BOT_COMMAND_NAME, exit_on_error=False)
   subparsers = parser.add_subparsers(description="Manage art pings", required=True)
-
-  #parser_help = subparsers.add_parser("help", description="Print this message")
-  #parser_help.set_defaults(func=help)
 
   parser_add = subparsers.add_parser('add', add_help=True, description="Add yourself to a character's ping list")
   parser_add.add_argument("chara_name")
@@ -258,8 +255,12 @@ async def handle_bot_message(msg: discord.Message):
   parser_listall = subparsers.add_parser("list-all", add_help=True, description="List all characters available")
   parser_listall.set_defaults(func=listall)
 
+  role = discord.utils.get(msg.guild.roles, name="art-ping-manager")
+  if role in msg.author.roles:
+    parser_purge = subparsers.add_parser("purge", add_help=True, description="Purge user ids that are not in server")
+    parser_purge.set_defaults(func=purge)
+
   tokens = shlex.split(msg.content)
-  print(tokens)
 
   try:
     args = parser.parse_args(tokens[1:])
