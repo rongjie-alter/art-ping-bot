@@ -215,12 +215,42 @@ async def handle_bot_message(msg: discord.Message):
   charaManager: chara_db.CharaManager = guild["charaManager"]
 
   async def add(args):
-    charaManager.add_user_to_chara(args.chara_name, str(msg.author.id))
-    await msg.reply("Done")
+    success = []
+    skipped = []
+
+    for chara in args.chara_name:
+      res = charaManager.add_user_to_chara(chara, str(msg.author.id))
+      if res:
+        success.append(chara)
+      else:
+        skipped.append(chara)
+
+    s = ""
+    if len(success) > 0:
+      s += f"Added: {', '.join(success)}\n"
+    if len(skipped) > 0:
+      s += f"Skipped: {', '.join(skipped)}"
+
+    await msg.reply(s)
 
   async def remove(args):
-    charaManager.remove_user_to_chara(args.chara_name, str(msg.author.id))
-    await msg.reply("Done")
+    success = []
+    skipped = []
+
+    for chara in args.chara_name:
+      res = charaManager.remove_user_to_chara(chara, str(msg.author.id))
+      if res:
+        success.append(chara)
+      else:
+        skipped.append(chara)
+
+    s = ""
+    if len(success) > 0:
+      s += f"Removed: {', '.join(success)}\n"
+    if len(skipped) > 0:
+      s += f"Skipped: {', '.join(skipped)}"
+
+    await msg.reply(s)
 
   async def list_(args):
     names = charaManager.get_charas_for_user(str(msg.author.id))
@@ -235,29 +265,63 @@ async def handle_bot_message(msg: discord.Message):
     names.sort()
     await msg.reply(", ".join(names))
 
+  async def addchara(args):
+    success = []
+    skipped = []
+
+    for chara in args.chara_name:
+      res = charaManager.add_chara(chara)
+      if res:
+        success.append(chara)
+      else:
+        skipped.append(chara)
+
+    s = ""
+    if len(success) > 0:
+      s += f"Added: {', '.join(success)}\n"
+    if len(skipped) > 0:
+      s += f"Skipped: {', '.join(skipped)}"
+
+    await msg.reply(s)
+
+  async def renamechara(args):
+    if charaManager.rename_chara(args.old_chara, args.new_chara):
+      await msg.reply("Rename done")
+    else:
+      await msg.reply(f"Rename failed. Either {args.old_chara} does not exist or {args.new_chara} already exists")
+
   async def purge(args):
     await msg.reply("TODO")
 
   parser = ErrorCatchingArgumentParser(BOT_COMMAND_NAME, exit_on_error=False)
   subparsers = parser.add_subparsers(description="Manage art pings", required=True)
 
-  parser_add = subparsers.add_parser('add', add_help=True, description="Add yourself to a character's ping list")
-  parser_add.add_argument("chara_name")
+  parser_add = subparsers.add_parser('add', add_help=True, help="Add yourself to a character's ping list")
+  parser_add.add_argument("chara_name", nargs="+")
   parser_add.set_defaults(func=add)
 
-  parser_remove = subparsers.add_parser("remove", add_help=True, description="Remove yourself to a character's ping list")
-  parser_remove.add_argument("chara_name")
+  parser_remove = subparsers.add_parser("remove", add_help=True, help="Remove yourself to a character's ping list")
+  parser_remove.add_argument("chara_name", nargs="+")
   parser_remove.set_defaults(func=remove)
 
-  parser_list = subparsers.add_parser("list", add_help=True, description="List all characters that you are in their ping list")
+  parser_list = subparsers.add_parser("list", add_help=True, help="List all characters that you are in their ping list")
   parser_list.set_defaults(func=list_)
 
-  parser_listall = subparsers.add_parser("list-all", add_help=True, description="List all characters available")
+  parser_listall = subparsers.add_parser("list-all", add_help=True, help="List all characters available")
   parser_listall.set_defaults(func=listall)
 
   role = discord.utils.get(msg.guild.roles, name="art-ping-manager")
   if role in msg.author.roles:
-    parser_purge = subparsers.add_parser("purge", add_help=True, description="Purge user ids that are not in server")
+    parser_addchara = subparsers.add_parser("add-chara", add_help=True, help="Add new character to ping list")
+    parser_addchara.add_argument("chara_name", nargs="+")
+    parser_addchara.set_defaults(func=addchara)
+
+    parser_renamechara = subparsers.add_parser("rename-chara", add_help=True, help="Rename character in ping list")
+    parser_renamechara.add_argument("old_chara")
+    parser_renamechara.add_argument("new_chara")
+    parser_renamechara.set_defaults(func=renamechara)
+
+    parser_purge = subparsers.add_parser("purge", add_help=True, help="Purge user ids that are not in server")
     parser_purge.set_defaults(func=purge)
 
   tokens = shlex.split(msg.content)

@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS chara_tab(
 );
 """
 
+def sanitize_chara_name(chara):
+    return chara.lower()
+
 class CharaManager:
     def __init__(self, filename):
         self.conn = sqlite3.connect(filename, isolation_level=None)
@@ -15,53 +18,61 @@ class CharaManager:
     def create_db(self):
         self.cur.execute(CREATE_DB_SCRIPT)
 
-    def sanitize_chara_name(self, chara):
-        pass
-
-    def add_chara(self, chara):
+    def add_chara(self, chara) -> bool:
         try:
             res = self.cur.execute("INSERT INTO chara_tab(chara_name, user_ids) VALUES (?, '')", (chara,))
+            return True
         except sqlite3.IntegrityError:
-            pass
+            return False
 
     def rename_chara(self, old_chara, new_chara):
+        old_chara = sanitize_chara_name(old_chara)
+        new_chara = sanitize_chara_name(new_chara)
+
         try:
             res = self.cur.execute("UPDATE chara_tab set chara_name = ? where chara_name = ?", (new_chara, old_chara))
+            return True
         except sqlite3.IntegrityError:
-            pass
+            return False
 
     def add_user_to_chara(self, chara: str, user_id: str):
+        chara = sanitize_chara_name(chara)
+
         res = self.cur.execute("SELECT user_ids from chara_tab where chara_name = ?", (chara,))
         x = res.fetchone()
         if not x:
-            return
+            return False
         user_ids = x[0]
         if user_ids == "":
             user_ids = []
         else:
             user_ids = user_ids.split(",")
         if user_id in user_ids:
-            return
+            return False
         user_ids.append(user_id)
         print(repr(user_ids))
         #user_ids.sort()
         self.cur.execute("UPDATE chara_tab set user_ids=? where chara_name = ?", (",".join(user_ids), chara))
+        return True
 
     def remove_user_to_chara(self, chara: str, user_id: str):
+        chara = sanitize_chara_name(chara)
+
         res = self.cur.execute("SELECT user_ids from chara_tab where chara_name = ?", (chara,))
         x = res.fetchone()
         if not x:
-            return
+            return False
         user_ids = x[0]
         if user_ids == "":
             user_ids = []
         else:
             user_ids = user_ids.split(",")
         if user_id not in user_ids:
-            return
+            return False
         user_ids.remove(user_id)
         #user_ids.sort()
         self.cur.execute("UPDATE chara_tab set user_ids=? where chara_name = ?", (",".join(user_ids), chara))
+        return True
 
     def get_charas_for_user(self, user_id):
         rows = self.getall()
