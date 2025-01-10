@@ -6,4 +6,5 @@ Scripts/
 pyvenv.cfg
 *.bat
 *.log
+*.log.*
 service_account.json
