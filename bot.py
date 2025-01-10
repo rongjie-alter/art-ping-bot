@@ -1,7 +1,6 @@
 import os
 import csv
 import time
-import urllib.request
 import asyncio
 import re
 import argparse
@@ -10,7 +9,6 @@ import traceback
 import textwrap
 
 import discord
-from discord.ext import commands
 
 import chara_db
 
@@ -19,7 +17,7 @@ TOKEN = os.getenv('BOT_TOKEN')
 MAX_PER_MSG = 2000
 MAX_ID_PER_MSG = MAX_PER_MSG // (4 + 18)
 MAX_CACHE_SIZE = 300
-CSV_CACHE_SECOND = 10 * 60
+CSV_CACHE_SECOND = 5 * 60
 
 HOUSAMO_SHEET = "https://docs.google.com/spreadsheets/d/1nr4k_-5DKjgyCX49gokg5iPpQ9a5l3d0lGrGnrnDR2U/gviz/tq?tqx=out:csv&sheet=Sheet1&headers=0"
 LAH_SHEET = "https://docs.google.com/spreadsheets/d/1xKhpSCMeyATJMr6Ur8q_OcvYEMPXYRJoX5hfrNOwSKU/gviz/tq?tqx=out:csv&sheet=Sheet1&headers=0"
@@ -240,6 +238,22 @@ class ErrorCatchingArgumentParser(argparse.ArgumentParser):
   def error(self, message):
     if message:
       raise ConsoleOutput(message)
+    
+
+from contextlib import AsyncContextDecorator
+
+class ElapsedTimeContext(AsyncContextDecorator):
+  def __init__(self, name, logger):
+    self.name = name
+    self.logger = logger
+
+  async def __aenter__(self):
+    self.start_time = time.time()
+    return self
+
+  async def __aexit__(self, *exc):
+    self.logger.info("(%s) Elapsed: %.1fms", self.name, (time.time() - self.start_time)*1000)
+    return False
 
 async def handle_bot_message(msg: discord.Message):
   if not msg.content.startswith(BOT_COMMAND_PREFIX):
@@ -251,9 +265,16 @@ async def handle_bot_message(msg: discord.Message):
 
   charaManager: chara_db.CharaManager = guild["charaManager"]
   logger = new_context_log()
-  start_time = time.time()
   logger.info("Command: %s", msg.content)
 
+  def elapsedTimeLog(f):
+    async def wrapper(*args, **kwargs):
+      start_time = time.time()
+      await f(*args, **kwargs)
+      logger.info("Elapsed: %.1fms", (time.time() - start_time)*1000)
+    return wrapper
+
+  @ElapsedTimeContext("overall", logger)
   async def add(args):
     success = []
     skipped = []
@@ -273,6 +294,7 @@ async def handle_bot_message(msg: discord.Message):
 
     await msg.reply(s)
 
+  @ElapsedTimeContext("overall", logger)
   async def remove(args):
     success = []
     skipped = []
@@ -292,8 +314,10 @@ async def handle_bot_message(msg: discord.Message):
 
     await msg.reply(s)
 
+  @ElapsedTimeContext("overall", logger)
   async def list_(args):
-    names = charaManager.get_charas_for_user(str(msg.author.id))
+    async with ElapsedTimeContext("charaManager", logger):
+      names = charaManager.get_charas_for_user(str(msg.author.id))
     if len(names) == 0:
       await msg.reply("You are not in any ping list yet")
     else:
@@ -301,12 +325,15 @@ async def handle_bot_message(msg: discord.Message):
       for x in split_long_msg(" ".join(names)):
         await msg.reply(x)
 
+  @ElapsedTimeContext("overall", logger)
   async def listall(args):
-    names = charaManager.get_charas()
+    async with ElapsedTimeContext("charaManager", logger):
+      names = charaManager.get_charas()
     names.sort()
     for x in split_long_msg(" ".join(names)):
       await msg.reply(x)
 
+  @ElapsedTimeContext("overall", logger)
   async def addchara(args):
     success = []
     skipped = []
@@ -326,12 +353,14 @@ async def handle_bot_message(msg: discord.Message):
 
     await msg.reply(s)
 
+  @ElapsedTimeContext("overall", logger)
   async def renamechara(args):
     if charaManager.rename_chara(args.old_chara, args.new_chara):
       await msg.reply("Rename done")
     else:
       await msg.reply(f"Rename failed. {args.new_chara} already exists")
 
+  @ElapsedTimeContext("overall", logger)
   async def purge(args):
     await msg.reply("TODO")
 
@@ -377,7 +406,6 @@ async def handle_bot_message(msg: discord.Message):
     await msg.reply(f"Something went wrong\nTrace-ID: `{logger.extra[TRACE_KEY]}`")
     logger.error("Bot command failed. msg=%s, stack=%s", msg.content, traceback.format_exc())
 
-  logger.info("Elapsed: %.1fms", (time.time() - start_time)*1000)
 
 class PingClient(discord.Client):
   #class PingClient(commands.Bot):
@@ -420,12 +448,22 @@ class PingClient(discord.Client):
     if now - guild.get("last_update", 0) < CSV_CACHE_SECOND:
       return guild["data"]
 
-    req = urllib.request.Request(sheet)
-    with urllib.request.urlopen(req) as res:
-      with open(filename, "wb") as f:
-        f.write(res.read())
+    #req = urllib.request.Request(sheet)
+    #with urllib.request.urlopen(req) as res:
+    #  with open(filename, "wb") as f:
+    #    f.write(res.read())
+    #
+    #guild["data"] = read_csv(filename)
 
-    guild["data"] = read_csv(filename)
+    charaManager: chara_db.CharaManager = guild["charaManager"]
+    data = {}
+    for row in charaManager.getall():
+      names = row[0].split("/")
+      ids = row[1].split(",")
+      for name in names:
+        data[name] = ids
+
+    guild["data"] = data
     guild["last_update"] = now
  
   async def on_message(self, msg):
