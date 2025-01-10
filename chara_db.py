@@ -18,6 +18,14 @@ class CharaManager:
     def create_db(self):
         self.cur.execute(CREATE_DB_SCRIPT)
 
+    def migrate_row(self, chara, user_ids_str):
+        chara = sanitize_chara_name(chara)
+
+        try:
+            res = self.cur.execute("INSERT INTO chara_tab(chara_name, user_ids) VALUES (?, ?)", (chara,user_ids_str))
+        except sqlite3.IntegrityError:
+            res = self.cur.execute("UPDATE chara_tab set user_ids = ? where chara_name = ?", (user_ids_str, chara))
+
     def add_chara(self, chara) -> bool:
         try:
             res = self.cur.execute("INSERT INTO chara_tab(chara_name, user_ids) VALUES (?, '')", (chara,))
@@ -50,8 +58,7 @@ class CharaManager:
         if user_id in user_ids:
             return False
         user_ids.append(user_id)
-        print(repr(user_ids))
-        #user_ids.sort()
+
         self.cur.execute("UPDATE chara_tab set user_ids=? where chara_name = ?", (",".join(user_ids), chara))
         return True
 
@@ -70,7 +77,7 @@ class CharaManager:
         if user_id not in user_ids:
             return False
         user_ids.remove(user_id)
-        #user_ids.sort()
+
         self.cur.execute("UPDATE chara_tab set user_ids=? where chara_name = ?", (",".join(user_ids), chara))
         return True
 

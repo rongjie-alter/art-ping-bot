@@ -6,6 +6,8 @@ import asyncio
 import re
 import argparse
 import shlex
+import traceback
+import textwrap
 
 import discord
 from discord.ext import commands
@@ -14,7 +16,8 @@ import chara_db
 
 TOKEN = os.getenv('BOT_TOKEN')
 
-MAX_ID_PER_MSG = 2000 // (4 + 18)
+MAX_PER_MSG = 2000
+MAX_ID_PER_MSG = MAX_PER_MSG // (4 + 18)
 MAX_CACHE_SIZE = 300
 CSV_CACHE_SECOND = 10 * 60
 
@@ -81,6 +84,34 @@ BLACKLISTED_HOST = [
 ]
 
 BLACKLIST_MSG = """No pings as these sites are usually just repost from original author's social media. Please provide the actual source."""
+
+import uuid
+import logging
+from logging.handlers import RotatingFileHandler
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler(filename='discord.log', encoding='utf-8', mode='a', backupCount=1, maxBytes=1000)
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+
+cLogger = logging.getLogger('bot')
+cLogger.setLevel(logging.INFO)
+handler = RotatingFileHandler(filename='bot.log', encoding='utf-8', mode='a', backupCount=1, maxBytes=1000)
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+cLogger.addHandler(handler)
+
+TRACE_KEY = "trace-id"
+
+class ContextLogger(logging.LoggerAdapter):
+  def process(self, msg, kwargs):
+    return f"[{self.extra[TRACE_KEY]}] {msg}", kwargs
+
+def new_context_log():
+  logger = logging.getLogger('bot')
+  return ContextLogger(logger, {TRACE_KEY: uuid.uuid4().hex})
 
 def read_csv(filename):
   data = {}
@@ -164,6 +195,7 @@ TWITTER_PATTERN = re.compile(r"^https\:\/\/(mobile\.|fx|vx)?(twitter|x|fixvx|fix
 BSKY_PATTERN = re.compile(r"^https\:\/\/(bsky|bsyy|bskx|vbsky|cbsky|bskye|bskyx)\.app\/profile/((\w|\.)+\/post\/\w+)")
 
 BOT_COMMAND_NAME = "$art-ping"
+BOT_COMMAND_PREFIX = BOT_COMMAND_NAME + " "
 
 def get_twitter(tokens):
   ids = []
@@ -188,24 +220,29 @@ def check_blacklisted_host(tokens):
 
   return False
 
+def split_long_msg(s) -> list:
+  return textwrap.wrap(s, width=MAX_PER_MSG)
+
+class ConsoleOutput(Exception):
+  pass
 class ErrorCatchingArgumentParser(argparse.ArgumentParser):
 
   def print_help(self, file=None):
-    raise Exception(self.format_help())
+    raise ConsoleOutput(self.format_help())
   
   def print_usage(self, file=None):
-    raise Exception(self.format_usage())
+    raise ConsoleOutput(self.format_usage())
 
   def exit(self, status=0, message=None):
     if message:
-      raise Exception(message)
+      raise ConsoleOutput(message)
 
   def error(self, message):
     if message:
-      raise Exception(message)
+      raise ConsoleOutput(message)
 
 async def handle_bot_message(msg: discord.Message):
-  if not msg.content.startswith(BOT_COMMAND_NAME):
+  if not msg.content.startswith(BOT_COMMAND_PREFIX):
     return
 
   guild = CONFIG.get(msg.guild.id)
@@ -213,6 +250,9 @@ async def handle_bot_message(msg: discord.Message):
     return
 
   charaManager: chara_db.CharaManager = guild["charaManager"]
+  logger = new_context_log()
+  start_time = time.time()
+  logger.info("Command: %s", msg.content)
 
   async def add(args):
     success = []
@@ -258,12 +298,14 @@ async def handle_bot_message(msg: discord.Message):
       await msg.reply("You are not in any ping list yet")
     else:
       names.sort()
-      await msg.reply(", ".join(names))
+      for x in split_long_msg(" ".join(names)):
+        await msg.reply(x)
 
   async def listall(args):
     names = charaManager.get_charas()
     names.sort()
-    await msg.reply(", ".join(names))
+    for x in split_long_msg(" ".join(names)):
+      await msg.reply(x)
 
   async def addchara(args):
     success = []
@@ -288,13 +330,13 @@ async def handle_bot_message(msg: discord.Message):
     if charaManager.rename_chara(args.old_chara, args.new_chara):
       await msg.reply("Rename done")
     else:
-      await msg.reply(f"Rename failed. Either {args.old_chara} does not exist or {args.new_chara} already exists")
+      await msg.reply(f"Rename failed. {args.new_chara} already exists")
 
   async def purge(args):
     await msg.reply("TODO")
 
   parser = ErrorCatchingArgumentParser(BOT_COMMAND_NAME, exit_on_error=False)
-  subparsers = parser.add_subparsers(description="Manage art pings", required=True)
+  subparsers = parser.add_subparsers(required=True)
 
   parser_add = subparsers.add_parser('add', add_help=True, help="Add yourself to a character's ping list")
   parser_add.add_argument("chara_name", nargs="+")
@@ -329,10 +371,13 @@ async def handle_bot_message(msg: discord.Message):
   try:
     args = parser.parse_args(tokens[1:])
     await args.func(args)
-  except Exception as e:
+  except (ConsoleOutput, argparse.ArgumentError, argparse.ArgumentTypeError) as e:
     await msg.reply(f"```\n{str(e)}\n```")
-    raise e
-    return
+  except Exception as e:
+    await msg.reply(f"Something went wrong\nTrace-ID: `{logger.extra[TRACE_KEY]}`")
+    logger.error("Bot command failed. msg=%s, stack=%s", msg.content, traceback.format_exc())
+
+  logger.info("Elapsed: %.1fms", (time.time() - start_time)*1000)
 
 class PingClient(discord.Client):
   #class PingClient(commands.Bot):
@@ -461,22 +506,8 @@ def register_commands(bot):
   bot.run(TOKEN)
 
 if __name__ == "__main__":
-  import logging
-
-  logging.basicConfig(level=logging.INFO)
-
-  logger = logging.getLogger('discord')
-  logger.setLevel(logging.INFO)
-  handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-  handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-  logger.addHandler(handler)
-
   intents = discord.Intents(messages=True, guilds=True)
-  #bot = commands.Bot(command_prefix='$art-ping-', intents=intents)
-  #register_commands(bot)
 
   client = PingClient(command_prefix='$art-ping-', intents=intents)
-  #register_commands(client)
-  #client.add_listener(client.on_message_handler, 'on_message')
   client.run(TOKEN)
 
