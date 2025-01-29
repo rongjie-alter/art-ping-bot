@@ -35,29 +35,29 @@ CONFIG = {
     "db_filename": "test.db",
   },
   # samocord
-  #280061796390404096: {
-  #  "disable": True,
-  #  "channels": [420080593217257487, 285588282522206208, 698643025236066426, 698701417971712030, 844714468390731777],
-  #  "sheet": HOUSAMO_SHEET,
-  #  "filename": "housamo.csv",
-  #  "db_filename": "housamo.db",
-  #},
-  ## herocord
-  #758267927362797568: {
-  #  "disable": True,
-  #  "channels": [758267927878828046, 758267927878828047, 758267927878828044, 758267927878828045, 844972742692700240],
-  #  "sheet": LAH_SHEET,
-  #  "filename": "lah.csv",
-  #  "db_filename": "lah.db",
-  #},
-  ## eidos
-  #904187573696618506: {
-  #  "disable": True,
-  #  "channels": [904207190561267794, 904519401699700746, 904224270945775648],
-  #  "sheet": EIDOS_SHEET,
-  #  "filename": "eidos.csv",
-  #  "db_filename": "eidos.db",
-  #},
+  280061796390404096: {
+    "disable": True,
+    "channels": [420080593217257487, 285588282522206208, 698643025236066426, 698701417971712030, 844714468390731777],
+    "sheet": HOUSAMO_SHEET,
+    "filename": "housamo.csv",
+    "db_filename": "housamo.db",
+  },
+  # herocord
+  758267927362797568: {
+    "disable": True,
+    "channels": [758267927878828046, 758267927878828047, 758267927878828044, 758267927878828045, 844972742692700240],
+    "sheet": LAH_SHEET,
+    "filename": "lah.csv",
+    "db_filename": "lah.db",
+  },
+  # eidos
+  904187573696618506: {
+    "disable": True,
+    "channels": [904207190561267794, 904519401699700746, 904224270945775648],
+    "sheet": EIDOS_SHEET,
+    "filename": "eidos.csv",
+    "db_filename": "eidos.db",
+  },
   # yamcord
   #796603865318555659: {
   #  #"disable": True,
