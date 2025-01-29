@@ -395,7 +395,8 @@ async def handle_bot_message(msg: discord.Message):
     #parser_purge = subparsers.add_parser("purge", add_help=True, help="Purge user ids that are not in server")
     #parser_purge.set_defaults(func=purge)
 
-  tokens = shlex.split(msg.content)
+  #tokens = shlex.split(msg.content)
+  tokens = msg.content.split()
 
   try:
     args = parser.parse_args(tokens[1:])
