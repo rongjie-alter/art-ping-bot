@@ -545,6 +545,7 @@ def register_commands(bot):
 
 if __name__ == "__main__":
   intents = discord.Intents(messages=True, guilds=True)
+  intents.message_content = True
 
   client = PingClient(command_prefix='$art-ping-', intents=intents)
   client.run(TOKEN)
