@@ -382,7 +382,7 @@ async def handle_bot_message(msg: discord.Message):
   parser_listall.set_defaults(func=listall)
 
   role = discord.utils.get(msg.guild.roles, name="art-ping-manager")
-  if role in msg.author.roles:
+  if role in msg.author.roles or msg.author.guild_permissions.administrator:
     parser_addchara = subparsers.add_parser("add-chara", add_help=True, help="Add new character to ping list")
     parser_addchara.add_argument("chara_name", nargs="+")
     parser_addchara.set_defaults(func=addchara)
@@ -392,8 +392,8 @@ async def handle_bot_message(msg: discord.Message):
     parser_renamechara.add_argument("new_chara")
     parser_renamechara.set_defaults(func=renamechara)
 
-    parser_purge = subparsers.add_parser("purge", add_help=True, help="Purge user ids that are not in server")
-    parser_purge.set_defaults(func=purge)
+    #parser_purge = subparsers.add_parser("purge", add_help=True, help="Purge user ids that are not in server")
+    #parser_purge.set_defaults(func=purge)
 
   tokens = shlex.split(msg.content)
 
