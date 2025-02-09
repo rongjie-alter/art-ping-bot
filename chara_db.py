@@ -1,4 +1,5 @@
 import sqlite3
+import re
 
 CREATE_DB_SCRIPT = """
 CREATE TABLE IF NOT EXISTS chara_tab(
@@ -7,7 +8,10 @@ CREATE TABLE IF NOT EXISTS chara_tab(
 );
 """
 
+CHARA_PATTERN = re.compile(r"^[^A-Za-z/_']*$")
+
 def sanitize_chara_name(chara):
+    chara = CHARA_PATTERN.sub("_", chara)
     return chara.lower()
 
 class CharaManager:
@@ -27,6 +31,7 @@ class CharaManager:
             res = self.cur.execute("UPDATE chara_tab set user_ids = ? where chara_name = ?", (user_ids_str, chara))
 
     def add_chara(self, chara) -> bool:
+        chara = sanitize_chara_name(chara)
         try:
             res = self.cur.execute("INSERT INTO chara_tab(chara_name, user_ids) VALUES (?, '')", (chara,))
             return True
