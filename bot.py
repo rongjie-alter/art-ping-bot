@@ -13,6 +13,7 @@ import discord
 import chara_db
 
 TOKEN = os.getenv('BOT_TOKEN')
+DEV_MODE = os.getenv("DEV") == "1"
 
 MAX_PER_MSG = 2000
 MAX_ID_PER_MSG = MAX_PER_MSG // (4 + 18)
@@ -24,10 +25,11 @@ LAH_SHEET = "https://docs.google.com/spreadsheets/d/1xKhpSCMeyATJMr6Ur8q_OcvYEMP
 EIDOS_SHEET = "https://docs.google.com/spreadsheets/d/1ycqCALRsh2f6aoIeI4EjlFL5bZjVNlQerQfFLhsRems/gviz/tq?tqx=out:csv&sheet=Sheet1&headers=0"
 YAM_SHEET = "https://docs.google.com/spreadsheets/d/1njU9KzbJyiGeqzB8T04_A0kwx-oMvnXAGlIBg3BT5CE/gviz/tq?tqx=out:csv&sheet=Sheet1&headers=0"
 
+TEST_SERVER_ID = 487520756289503253
 
 CONFIG = {
   # test
-  487520756289503253: {
+  TEST_SERVER_ID: {
     #"disable": True,
     "channels": [844546489133170729, 844546594430779412],
     "sheet": HOUSAMO_SHEET,
@@ -70,6 +72,11 @@ CONFIG = {
 for v in CONFIG.values():
   v["charaManager"] = chara_db.CharaManager(v["db_filename"])
   v["charaManager"].create_db()
+if DEV_MODE:
+  for k in CONFIG:
+    if k != TEST_SERVER_ID:
+      CONFIG[k]["disable"] = False
+
 
 DUPLICATE_PING_MSG = """Posted recently. Please search the Twitter/BlueSky URL in Discord without '?s=', '?t=' and 'mobile.' before posting.
 
