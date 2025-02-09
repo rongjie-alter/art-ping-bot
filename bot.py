@@ -287,11 +287,12 @@ async def handle_bot_message(msg: discord.Message):
     skipped = []
 
     for chara in args.chara_name:
-      res = charaManager.add_user_to_chara(chara, str(msg.author.id))
+      true_name = charaManager.get_true_name(chara)
+      res = charaManager.add_user_to_chara(true_name, str(msg.author.id))
       if res:
-        success.append(chara)
+        success.append(true_name)
       else:
-        skipped.append(chara)
+        skipped.append(true_name)
 
     s = ""
     if len(success) > 0:
@@ -307,11 +308,12 @@ async def handle_bot_message(msg: discord.Message):
     skipped = []
 
     for chara in args.chara_name:
-      res = charaManager.remove_user_to_chara(chara, str(msg.author.id))
+      true_name = charaManager.get_true_name(chara)
+      res = charaManager.remove_user_to_chara(true_name, str(msg.author.id))
       if res:
-        success.append(chara)
+        success.append(true_name)
       else:
-        skipped.append(chara)
+        skipped.append(true_name)
 
     s = ""
     if len(success) > 0:

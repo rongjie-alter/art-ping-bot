@@ -21,6 +21,17 @@ class CharaManager:
 
     def create_db(self):
         self.cur.execute(CREATE_DB_SCRIPT)
+        self.init_alias_map()
+
+    def init_alias_map(self):
+        alias_map = {}
+        for name in self.get_charas():
+            for n in name.split("/"):
+                alias_map[n] = name
+        self.alias_map = alias_map
+
+    def get_true_name(self, name):
+        return self.alias_map.get(name, name)
 
     def migrate_row(self, chara, user_ids_str):
         chara = sanitize_chara_name(chara)
@@ -37,6 +48,8 @@ class CharaManager:
             return True
         except sqlite3.IntegrityError:
             return False
+        finally:
+            self.init_alias_map()
 
     def rename_chara(self, old_chara, new_chara):
         old_chara = sanitize_chara_name(old_chara)
@@ -47,6 +60,8 @@ class CharaManager:
             return True
         except sqlite3.IntegrityError:
             return False
+        finally:
+            self.init_alias_map()
 
     def add_user_to_chara(self, chara: str, user_id: str):
         chara = sanitize_chara_name(chara)
