@@ -71,6 +71,7 @@ CONFIG = {
   # eidos 2
   1387029968579465246: {
     "channels": [1387036389811552367, 1387036418781745364],
+    "sheet": EIDOS_SHEET,
     "filename": "eidos2.csv",
     "db_filename": "eidos2.db",
   },
@@ -502,7 +503,7 @@ class PingClient(discord.Client):
     if msg.channel.id not in guild["channels"]:
       return
 
-    self.download_csv(guild["sheet"], guild["filename"], guild)
+    self.download_csv("", guild["filename"], guild)
     data = guild["data"]
 
     content = msg.content
