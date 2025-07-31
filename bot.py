@@ -68,6 +68,12 @@ CONFIG = {
   #  "sheet": YAM_SHEET,
   #  "filename": "yam.csv",
   #}
+  # eidos 2
+  1387029968579465246: {
+    "channels": [1387036389811552367, 1387036418781745364],
+    "filename": "eidos2.csv",
+    "db_filename": "eidos2.db",
+  },
 }
 for v in CONFIG.values():
   v["charaManager"] = chara_db.CharaManager(v["db_filename"])
