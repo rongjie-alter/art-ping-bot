@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS chara_tab(
 );
 """
 
-CHARA_PATTERN = re.compile(r"[^A-Za-z/_']")
+CHARA_PATTERN = re.compile(r"[^A-Za-z0-9/_']")
 
 def sanitize_chara_name(chara):
     chara = CHARA_PATTERN.sub("_", chara)
